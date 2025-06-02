@@ -1,0 +1,235 @@
+# A full packed HTML, CSS, and JavaScript car game file
+
+html_full = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pro Web Car Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html {
+      height: 100%;
+      font-family: 'Orbitron', sans-serif;
+      background: #000;
+      overflow: hidden;
+    }
+    #gameContainer {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: #1a1a1a;
+    }
+    .road {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: #2c2c2c;
+    }
+    .lane-markers {
+      position: absolute;
+      width: 10px;
+      height: 50px;
+      background: #5fdde5;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: moveMarkers 1s linear infinite;
+    }
+    @keyframes moveMarkers {
+      0% { top: -50px; }
+      100% { top: 100%; }
+    }
+    #playerCar {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 50px;
+      height: 100px;
+      background: cyan;
+    }
+    .enemyCar {
+      position: absolute;
+      width: 50px;
+      height: 100px;
+      background: red;
+    }
+    #scoreBoard, #highScoreBoard, #lastScoreBoard {
+      position: absolute;
+      left: 10px;
+      color: white;
+      font-size: 16px;
+    }
+    #scoreBoard { top: 10px; }
+    #highScoreBoard { top: 40px; }
+    #lastScoreBoard { top: 70px; }
+    #gameOverScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 10;
+    }
+    #mobileControls {
+      position: absolute;
+      bottom: 60px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
+    .controlBtn {
+      background: #005555cc;
+      color: cyan;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 80px;
+      font-size: 2em;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <div class="road">
+      <div class="lane-markers" style="left: 25%;"></div>
+      <div class="lane-markers" style="left: 50%;"></div>
+      <div class="lane-markers" style="left: 75%;"></div>
+    </div>
+    <div id="playerCar"></div>
+    <div id="scoreBoard">Score: 0</div>
+    <div id="highScoreBoard">High Score: 0</div>
+    <div id="lastScoreBoard">Last Score: 0</div>
+    <div id="gameOverScreen">
+      <div>Game Over!</div>
+      <div id="finalScoreDisplay">Final Score: 0</div>
+      <button onclick="restartGame()">Restart</button>
+    </div>
+    <div id="mobileControls">
+      <div class="controlBtn" onclick="movePlayer('left')">&#9664;</div>
+      <div class="controlBtn" onclick="movePlayer('right')">&#9654;</div>
+    </div>
+  </div>
+  <script>
+    const gameContainer = document.getElementById('gameContainer');
+    const playerCar = document.getElementById('playerCar');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const scoreBoard = document.getElementById('scoreBoard');
+    const highScoreBoard = document.getElementById('highScoreBoard');
+    const lastScoreBoard = document.getElementById('lastScoreBoard');
+    const finalScoreDisplay = document.getElementById('finalScoreDisplay');
+
+    let playerLane = 1;
+    const lanes = [window.innerWidth * 0.25 - 25, window.innerWidth * 0.5 - 25, window.innerWidth * 0.75 - 25];
+    let score = 0;
+    let highScore = localStorage.getItem("highScore") || 0;
+    let lastScore = localStorage.getItem("lastScore") || 0;
+    let enemies = [];
+    let gameInterval;
+    let animationFrame;
+
+    function updateUI() {
+      scoreBoard.textContent = "Score: " + score;
+      highScoreBoard.textContent = "High Score: " + highScore;
+      lastScoreBoard.textContent = "Last Score: " + lastScore;
+    }
+
+    function movePlayer(direction) {
+      if (direction === 'left' && playerLane > 0) playerLane--;
+      else if (direction === 'right' && playerLane < 2) playerLane++;
+      playerCar.style.left = lanes[playerLane] + "px";
+    }
+
+    function createEnemy() {
+      const enemy = document.createElement('div');
+      enemy.className = 'enemyCar';
+      enemy.style.left = lanes[Math.floor(Math.random() * 3)] + 'px';
+      enemy.style.top = "-120px";
+      gameContainer.appendChild(enemy);
+      enemies.push(enemy);
+    }
+
+    function gameLoop() {
+      enemies.forEach((enemy, index) => {
+        let top = parseFloat(enemy.style.top);
+        top += 5;
+        enemy.style.top = top + "px";
+        if (top > window.innerHeight) {
+          enemy.remove();
+          enemies.splice(index, 1);
+          score++;
+          updateUI();
+        } else {
+          if (isCollide(enemy, playerCar)) endGame();
+        }
+      });
+      animationFrame = requestAnimationFrame(gameLoop);
+    }
+
+    function isCollide(a, b) {
+      const rect1 = a.getBoundingClientRect();
+      const rect2 = b.getBoundingClientRect();
+      return !(rect1.bottom < rect2.top ||
+               rect1.top > rect2.bottom ||
+               rect1.right < rect2.left ||
+               rect1.left > rect2.right);
+    }
+
+    function startGame() {
+      score = 0;
+      enemies.forEach(e => e.remove());
+      enemies = [];
+      gameOverScreen.style.display = "none";
+      updateUI();
+      gameInterval = setInterval(createEnemy, 1500);
+      animationFrame = requestAnimationFrame(gameLoop);
+    }
+
+    function endGame() {
+      clearInterval(gameInterval);
+      cancelAnimationFrame(animationFrame);
+      gameOverScreen.style.display = "flex";
+      finalScoreDisplay.textContent = "Final Score: " + score;
+      lastScore = score;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("highScore", highScore);
+      }
+      localStorage.setItem("lastScore", lastScore);
+      updateUI();
+    }
+
+    function restartGame() {
+      startGame();
+    }
+
+    window.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft' || e.key === 'a') movePlayer('left');
+      if (e.key === 'ArrowRight' || e.key === 'd') movePlayer('right');
+    });
+
+    playerCar.style.left = lanes[playerLane] + 'px';
+    updateUI();
+    startGame();
+  </script>
+</body>
+</html>
+"""
+
+# Save to .html file
+file_path = "/mnt/data/Car_Game_Full.html"
+with open(file_path, "w") as f:
+    f.write(html_full)
+
+file_path
